@@ -1,0 +1,5 @@
+# <type>(<scope>): <imperative summary, <=72 chars, no period>
+#
+# types: feat fix chore docs refactor test
+#
+# Body: why, not what. Wrap at 72.
