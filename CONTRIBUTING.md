@@ -53,7 +53,7 @@ Name for pr:
 - Resolutions
 
 
-`Closes #1` - #N is the number of issues
+`Closes #N` — N is the issue number
 
 ## Rules
 - squash merge only; the branch is deleted afterwards
