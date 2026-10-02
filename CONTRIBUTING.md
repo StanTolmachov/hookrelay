@@ -53,10 +53,11 @@ Name for pr:
 - Resolutions
 
 
-`Closes #1` - #N is the number of issue
+`Closes #1` - #N is the number of issues
 
 ## Rules
 - squash merge only; the branch is deleted afterwards
 - push into main is closed, only through PR
 - main is always green and deployable
 - decisions with a rejected alternative go into DECISIONS.md in the same PR
+- after cloning set `git config pull.ff only`
