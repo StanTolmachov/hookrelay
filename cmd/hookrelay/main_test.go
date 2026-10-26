@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 )
 
@@ -83,6 +86,81 @@ func TestConfigLoad(t *testing.T) {
 				if *got != tt.want {
 					t.Fatalf("want = %+v, got = %+v", tt.want, *got)
 				}
+			},
+		)
+	}
+}
+
+func TestNewRouter(t *testing.T) {
+	mux := NewRouter()
+
+	tests := []struct {
+		name       string
+		target     string
+		method     string
+		wantStatus int
+		wantHeader map[string]string
+		wantBody   *string
+	}{
+		{
+			name:       "ok",
+			target:     "/healthz",
+			method:     http.MethodGet,
+			wantStatus: http.StatusOK,
+			wantHeader: map[string]string{
+				"Content-Type": "application/json",
+			},
+			wantBody: new("ok"),
+		},
+		{
+			name:       "405",
+			target:     "/healthz",
+			method:     http.MethodPost,
+			wantStatus: http.StatusMethodNotAllowed,
+		},
+		{
+			name:       "404",
+			target:     "/healthzzz",
+			method:     http.MethodGet,
+			wantStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(
+			tt.name, func(t *testing.T) {
+				req := httptest.NewRequest(tt.method, tt.target, nil)
+				rec := httptest.NewRecorder()
+
+				mux.ServeHTTP(rec, req)
+
+				if rec.Code != tt.wantStatus {
+					t.Fatalf("status = %d, want = %d", rec.Code, tt.wantStatus)
+				}
+
+				for k, want := range tt.wantHeader {
+					if got := rec.Result().Header.Get(k); got != want {
+						t.Fatalf("header %s = %q, want = %q", k, got, want)
+					}
+				}
+				if tt.wantBody == nil {
+					return
+				}
+
+				type healthResp struct {
+					Status string `json:"status"`
+				}
+
+				var gotBody healthResp
+
+				if err := json.NewDecoder(rec.Body).Decode(&gotBody); err != nil {
+					t.Fatalf("decode body: %v", err)
+				}
+
+				if *tt.wantBody != gotBody.Status {
+					t.Fatalf("body got = %q, want = %q", gotBody.Status, *tt.wantBody)
+				}
+
 			},
 		)
 	}

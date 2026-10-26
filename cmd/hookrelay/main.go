@@ -80,7 +80,7 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func newRouter() http.Handler {
+func NewRouter() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", healthz)
@@ -90,7 +90,7 @@ func ServerRun(port string) error {
 
 	addr := net.JoinHostPort("", port)
 
-	mux := newRouter()
+	mux := NewRouter()
 
 	srv := &http.Server{
 		Addr:              addr,
