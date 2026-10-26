@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,7 +18,7 @@ import (
 
 type Config struct {
 	Port     string
-	LogLevel string
+	LogLevel slog.Level
 }
 
 func main() {
@@ -27,10 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := LoggerSetup(cfg.LogLevel); err != nil {
-		slog.Error("logger failed", "error", err)
-		os.Exit(1)
-	}
+	LoggerSetup(cfg.LogLevel)
 
 	if err := ServerRun(cfg.Port); err != nil {
 		slog.Error("server failed", "error", err)
@@ -48,27 +46,28 @@ func ConfigLoad() (*Config, error) {
 	if portInt < 1 || portInt > 65535 {
 		return nil, fmt.Errorf("parse PORT: %d out of range 1..65535", portInt)
 	}
-	port := fmt.Sprintf(":"+"%s", portInput)
+
+	level := cmp.Or(os.Getenv("LOG_LEVEL"), "INFO")
+
+	var lvl slog.Level
+	if err := lvl.UnmarshalText([]byte(level)); err != nil {
+		return nil, fmt.Errorf("parse LOG_LEVEL: %w", err)
+	}
+
 	cfg := &Config{
-		Port:     port,
-		LogLevel: cmp.Or(os.Getenv("LOG_LEVEL"), "INFO"),
+		Port:     strconv.Itoa(portInt),
+		LogLevel: lvl,
 	}
 	return cfg, nil
 }
 
-func LoggerSetup(level string) error {
-
-	lv := new(slog.LevelVar)
-	if err := lv.UnmarshalText([]byte(level)); err != nil {
-		return fmt.Errorf("parse LOG_LEVEL: %w", err)
-	}
+func LoggerSetup(level slog.Level) {
 	h := slog.NewJSONHandler(
 		os.Stdout, &slog.HandlerOptions{
-			Level: lv,
+			Level: level,
 		},
 	)
 	slog.SetDefault(slog.New(h))
-	return nil
 }
 func healthz(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -81,13 +80,20 @@ func healthz(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ServerRun(port string) error {
+func newRouter() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /healthz", healthz)
+	return mux
+}
+func ServerRun(port string) error {
+
+	addr := net.JoinHostPort("", port)
+
+	mux := newRouter()
 
 	srv := &http.Server{
-		Addr:              port,
+		Addr:              addr,
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
