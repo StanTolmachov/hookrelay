@@ -51,3 +51,17 @@ type Attempt struct {
 	Error      string
 	CreatedAt  time.Time
 }
+
+func NewEvent(eventType string, payload []byte) (*Event, error) {
+	err := ValidateEvent(eventType, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Event{
+		ID:        uuid.NewV7(),
+		Type:      eventType,
+		Payload:   payload,
+		CreatedAt: time.Now().UTC(),
+	}, nil
+}
